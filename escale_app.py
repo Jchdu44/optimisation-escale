@@ -61,10 +61,11 @@ def simulation_dechargement(tonnage_par_cale, cadence_dechargement, nombre_cales
     st.subheader("Simulation du Déchargement en Temps Réel")
     progress_bars = [st.progress(0) for _ in range(nombre_cales)]
     tonnage_restant = tonnage_par_cale[:]
+    temps_ecoule_placeholder = st.empty()
     temps_ecoule = 0
     
     while sum(tonnage_restant) > 0:
-        time.sleep(1)
+        time.sleep(1)  # Pause de 1 seconde pour la simulation
         temps_ecoule += 1
         for i in range(nombre_cales):
             if tonnage_restant[i] > 0:
@@ -73,7 +74,7 @@ def simulation_dechargement(tonnage_par_cale, cadence_dechargement, nombre_cales
                 progress = int(((tonnage_par_cale[i] - tonnage_restant[i]) / tonnage_par_cale[i]) * 100)
                 progress_bars[i].progress(progress)
         
-        st.write(f"Temps écoulé : {temps_ecoule} minutes")
+        temps_ecoule_placeholder.write(f"Temps écoulé : {temps_ecoule} minutes")
     
     st.success("Déchargement terminé !")
 
