@@ -20,8 +20,10 @@ shifts = {
     "S2 (13h00-20h00)": 6.5
 }
 
-def calcul_duree_escale(tonnage_total, cadence_dechargement):
-    return tonnage_total / cadence_dechargement if cadence_dechargement > 0 else 0
+def calcul_duree_escale(tonnage_par_cale, cadence_par_cale):
+    duree_par_cale = [tonnage_par_cale[i] / cadence_par_cale[i] if cadence_par_cale[i] > 0 else 0 for i in range(len(tonnage_par_cale))]
+    duree_totale = sum(duree_par_cale)
+    return duree_par_cale, duree_totale
 
 def optimiser_working_shifts(duree_totale):
     plan_shifts = []
@@ -43,30 +45,40 @@ def optimiser_working_shifts(duree_totale):
     
     return plan_shifts, total_shift_time
 
-def allocation_dockers(type_cargaison, shifts_utilises):
-    equipe = equipes_dockers.get(type_cargaison, equipes_dockers["Autres"])
-    total_equipes = len(shifts_utilises)  # Une équipe par shift utilisé
-    allocation_totale = {key: val * total_equipes for key, val in equipe.items()}
+def allocation_dockers(type_cargaisons, plan_shifts):
+    allocation_totale = {"CM": 0, "HP": 0, "Chauffeurs": 0, "HC": 0}
+    for type_cargaison in type_cargaisons:
+        equipe = equipes_dockers.get(type_cargaison, equipes_dockers["Autres"])
+        for key in allocation_totale:
+            allocation_totale[key] += equipe[key] * len(plan_shifts)
     return allocation_totale
 
-def afficher_schema_navire(tonnage_total, duree_totale):
-    fig, ax = plt.subplots(figsize=(10, 2))
-    ax.barh(["Navire"], [tonnage_total], color='steelblue')
+def afficher_schema_navire(tonnage_par_cale, duree_par_cale):
+    fig, ax = plt.subplots(figsize=(12, 3))
+    cales = [f"Cale {i+1}" for i in range(len(tonnage_par_cale))]
+    ax.barh(cales, tonnage_par_cale, color='steelblue')
     ax.set_xlabel("Tonnage (T)")
-    ax.set_title("Tonnage total à décharger et durée estimée")
+    ax.set_title("Tonnage par cale et durée estimée")
     st.pyplot(fig)
 
 st.title("Optimisation des Escales de Navires")
 
 nom_navire = st.text_input("Nom du navire")
-tonnage_total = st.number_input("Tonnage total à décharger (tonnes)", min_value=0.0, step=100.0)
-cadence_moyenne = st.number_input("Cadence moyenne de déchargement (tonnes/h)", min_value=1.0, step=10.0)
-type_cargaison = st.selectbox("Type de cargaison", list(equipes_dockers.keys()))
+nombre_cales = st.number_input("Nombre de cales", min_value=1, step=1)
+
+tonnage_par_cale = []
+cadence_par_cale = []
+type_cargaisons = []
+
+for i in range(nombre_cales):
+    tonnage_par_cale.append(st.number_input(f"Tonnage de la cale {i+1} (tonnes)", min_value=0.0, step=100.0))
+    cadence_par_cale.append(st.number_input(f"Cadence de déchargement de la cale {i+1} (tonnes/h)", min_value=1.0, step=10.0))
+    type_cargaisons.append(st.selectbox(f"Type de cargaison pour la cale {i+1}", list(equipes_dockers.keys()), key=f"cargaison_{i}"))
 
 if st.button("Calculer"):
-    duree_totale = calcul_duree_escale(tonnage_total, cadence_moyenne)
+    duree_par_cale, duree_totale = calcul_duree_escale(tonnage_par_cale, cadence_par_cale)
     plan_shifts, total_shift_time = optimiser_working_shifts(duree_totale)
-    allocation_totale = allocation_dockers(type_cargaison, plan_shifts)
+    allocation_totale = allocation_dockers(type_cargaisons, plan_shifts)
     
     st.subheader("Résultats")
     st.write(f"Nom du navire : {nom_navire}")
@@ -78,5 +90,5 @@ if st.button("Calculer"):
     for role, nombre in allocation_totale.items():
         st.write(f"{role} : {nombre}")
     
-    st.subheader("Schéma du navire et durée de déchargement")
-    afficher_schema_navire(tonnage_total, duree_totale)
+    st.subheader("Schéma du navire et répartition du tonnage")
+    afficher_schema_navire(tonnage_par_cale, duree_par_cale)
