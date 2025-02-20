@@ -4,7 +4,7 @@ import pandas as pd
 
 def calcul_duree_escale(tonnage_par_cale, cadence_dechargement, nombre_cales):
     duree_par_cale = [tonnage_par_cale[i] / cadence_dechargement[i] if cadence_dechargement[i] > 0 else 0 for i in range(nombre_cales)]
-    duree_totale = max(duree_par_cale) if duree_par_cale else 0
+    duree_totale = sum(duree_par_cale) if duree_par_cale else 0
     return duree_par_cale, duree_totale
 
 def allocation_dockers(nombre_cales, dockers_par_cale, nombre_navires):
