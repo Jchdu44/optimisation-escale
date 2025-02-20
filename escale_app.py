@@ -24,9 +24,11 @@ shifts = {
 BULLDOZER_SEUIL = 0.2  # Seuil de 20% pour introduire un bulldozer
 
 def calcul_duree_escale(tonnage_par_cale, cadence_moyenne):
-    duree_par_cale = [tonnage / cadence_moyenne if cadence_moyenne > 0 else 0 for tonnage in tonnage_par_cale]
+    if not tonnage_par_cale or cadence_moyenne <= 0:
+        return [], 0, []
+    duree_par_cale = [tonnage / cadence_moyenne for tonnage in tonnage_par_cale]
     duree_totale = sum(duree_par_cale)
-    seuil_bulldozer_temps = [(tonnage * (1 - BULLDOZER_SEUIL)) / cadence_moyenne if cadence_moyenne > 0 else 0 for tonnage in tonnage_par_cale]
+    seuil_bulldozer_temps = [(tonnage * (1 - BULLDOZER_SEUIL)) / cadence_moyenne for tonnage in tonnage_par_cale]
     return duree_par_cale, duree_totale, seuil_bulldozer_temps
 
 def optimiser_working_shifts(duree_totale):
@@ -34,11 +36,16 @@ def optimiser_working_shifts(duree_totale):
     total_shift_time = 0
     
     while duree_totale > 0:
-        for shift, duration in shifts.items():
-            if duree_totale > duration:
+        found_shift = False
+        for shift, duration in sorted(shifts.items(), key=lambda x: -x[1]):
+            if duree_totale >= duration:
                 plan_shifts.append(shift)
                 duree_totale -= duration
                 total_shift_time += duration
+                found_shift = True
+                break
+        if not found_shift:
+            break  # Sécurité pour éviter une boucle infinie
     
     return plan_shifts, total_shift_time
 
@@ -74,18 +81,25 @@ tonnage_par_cale = []
 type_cargaisons = []
 
 for i in range(nombre_cales):
-    tonnage_par_cale.append(st.number_input(f"Tonnage de la cale {i+1} (tonnes)", min_value=0.0, step=100.0))
+    tonnage = st.number_input(f"Tonnage de la cale {i+1} (tonnes)", min_value=0.0, step=100.0)
+    tonnage_par_cale.append(tonnage)
     type_cargaisons.append(st.selectbox(f"Type de cargaison pour la cale {i+1}", list(equipes_dockers.keys()), key=f"cargaison_{i}"))
 
 if st.button("Calculer"):
-    duree_par_cale, duree_totale, seuil_bulldozer_temps = calcul_duree_escale(tonnage_par_cale, cadence_moyenne)
-    plan_shifts, total_shift_time = optimiser_working_shifts(duree_totale)
-    
-    st.subheader("Résultats")
-    st.write(f"Nom du navire : {nom_navire}")
-    st.write(f"Durée totale estimée de l'escale (h) : {duree_totale:.2f}")
-    st.write(f"Shifts recommandés : {', '.join(plan_shifts)}")
-    st.write(f"Temps total de shift utilisé : {total_shift_time:.2f} h")
-    
-    st.subheader("Schéma du navire et répartition du tonnage")
-    afficher_schema_navire(tonnage_par_cale, duree_par_cale, seuil_bulldozer_temps)
+    try:
+        duree_par_cale, duree_totale, seuil_bulldozer_temps = calcul_duree_escale(tonnage_par_cale, cadence_moyenne)
+        if duree_totale == 0:
+            st.warning("Veuillez saisir des valeurs valides pour le tonnage et la cadence de déchargement.")
+        else:
+            plan_shifts, total_shift_time = optimiser_working_shifts(duree_totale)
+            
+            st.subheader("Résultats")
+            st.write(f"Nom du navire : {nom_navire}")
+            st.write(f"Durée totale estimée de l'escale (h) : {duree_totale:.2f}")
+            st.write(f"Shifts recommandés : {', '.join(plan_shifts)}")
+            st.write(f"Temps total de shift utilisé : {total_shift_time:.2f} h")
+            
+            st.subheader("Schéma du navire et répartition du tonnage")
+            afficher_schema_navire(tonnage_par_cale, duree_par_cale, seuil_bulldozer_temps)
+    except Exception as e:
+        st.error(f"Une erreur est survenue : {str(e)}")
