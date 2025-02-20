@@ -29,6 +29,19 @@ def calcul_duree_escale(tonnage_par_cale, cadence_moyenne):
     seuil_bulldozer_temps = [(tonnage * (1 - BULLDOZER_SEUIL)) / cadence_moyenne if cadence_moyenne > 0 else 0 for tonnage in tonnage_par_cale]
     return duree_par_cale, duree_totale, seuil_bulldozer_temps
 
+def optimiser_working_shifts(duree_totale):
+    plan_shifts = []
+    total_shift_time = 0
+    
+    while duree_totale > 0:
+        for shift, duration in shifts.items():
+            if duree_totale > duration:
+                plan_shifts.append(shift)
+                duree_totale -= duration
+                total_shift_time += duration
+    
+    return plan_shifts, total_shift_time
+
 def afficher_schema_navire(tonnage_par_cale, duree_par_cale, seuil_bulldozer_temps):
     fig, ax = plt.subplots(figsize=(12, 5))
     cales = [f"Cale {i+1}" for i in range(len(tonnage_par_cale))]
@@ -38,6 +51,10 @@ def afficher_schema_navire(tonnage_par_cale, duree_par_cale, seuil_bulldozer_tem
     
     ax.barh(y_positions, duree_par_cale, bar_width, label="Temps de déchargement", color='blue')
     ax.barh(y_positions + bar_width, seuil_bulldozer_temps, bar_width, label="Temps avant bulldozer", color='orange')
+    
+    for i, (duree, seuil_temps) in enumerate(zip(duree_par_cale, seuil_bulldozer_temps)):
+        ax.text(duree / 2, i, f"{duree:.2f} h", va='center', ha='center', color='white')
+        ax.text(seuil_temps / 2, i + bar_width, f"{seuil_temps:.2f} h", va='center', ha='center', color='black')
     
     ax.set_yticks(y_positions + bar_width / 2)
     ax.set_yticklabels(cales)
@@ -62,10 +79,13 @@ for i in range(nombre_cales):
 
 if st.button("Calculer"):
     duree_par_cale, duree_totale, seuil_bulldozer_temps = calcul_duree_escale(tonnage_par_cale, cadence_moyenne)
+    plan_shifts, total_shift_time = optimiser_working_shifts(duree_totale)
     
     st.subheader("Résultats")
     st.write(f"Nom du navire : {nom_navire}")
     st.write(f"Durée totale estimée de l'escale (h) : {duree_totale:.2f}")
+    st.write(f"Shifts recommandés : {', '.join(plan_shifts)}")
+    st.write(f"Temps total de shift utilisé : {total_shift_time:.2f} h")
     
     st.subheader("Schéma du navire et répartition du tonnage")
     afficher_schema_navire(tonnage_par_cale, duree_par_cale, seuil_bulldozer_temps)
