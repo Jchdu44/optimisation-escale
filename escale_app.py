@@ -9,6 +9,32 @@ def calcul_duree_escale(tonnage_par_cale, cadence_dechargement, nombre_cales):
     duree_totale = sum(duree_par_cale) if duree_par_cale else 0
     return duree_par_cale, duree_totale
 
+def optimiser_working_shifts(duree_totale):
+    shifts = {
+        "V1 (08h00-12h00)": 3.5,
+        "V2 (14h00-18h00)": 3.5,
+        "S1 (06h00-13h00)": 6.5,
+        "S2 (13h00-20h00)": 6.5
+    }
+    plan_shifts = []
+    total_shift_time = 0
+    
+    while duree_totale > 0:
+        if duree_totale > 6.5:
+            plan_shifts.append("S1 + S2")
+            duree_totale -= 13.0
+            total_shift_time += 13.0
+        elif duree_totale > 3.5:
+            plan_shifts.append("S1")
+            duree_totale -= 6.5
+            total_shift_time += 6.5
+        else:
+            plan_shifts.append("V1")
+            duree_totale -= 3.5
+            total_shift_time += 3.5
+    
+    return plan_shifts, total_shift_time
+
 def afficher_schema_navire(tonnage_par_cale, durees, nombre_cales, type_cargaison):
     fig, ax = plt.subplots(figsize=(12, 3))
     
@@ -44,10 +70,13 @@ for i in range(nombre_cales):
 
 if st.button("Calculer"):
     durees, duree_totale = calcul_duree_escale(tonnage_par_cale, [cadence_moyenne]*nombre_cales, nombre_cales)
+    plan_shifts, total_shift_time = optimiser_working_shifts(duree_totale)
     
     st.subheader("Resultats")
     st.write(f"Nom du navire : {nom_navire}")
     st.write(f"Duree totale estimee de l'escale (h) : {duree_totale:.2f}")
+    st.write(f"Shifts recommandes : {', '.join(plan_shifts)}")
+    st.write(f"Temps total de shift utilise : {total_shift_time:.2f} h")
     
     st.subheader("Schema du navire et repartition du tonnage")
     afficher_schema_navire(tonnage_par_cale, durees, nombre_cales, type_cargaison)
