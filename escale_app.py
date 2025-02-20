@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import streamlit as st
 import pandas as pd
+import matplotlib.pyplot as plt
 
 def calcul_duree_escale(tonnage_par_cale, cadence_dechargement, nombre_cales):
     duree_par_cale = [tonnage_par_cale[i] / cadence_dechargement[i] if cadence_dechargement[i] > 0 else 0 for i in range(nombre_cales)]
@@ -23,6 +24,14 @@ def selection_working_shift():
         "20h00-23h00 (majore)": 1.5
     }
     return min(shifts, key=shifts.get), shifts[min(shifts, key=shifts.get)]
+
+def afficher_schema_navire(tonnage_par_cale, nombre_cales):
+    fig, ax = plt.subplots(figsize=(10, 5))
+    cales = [f"Cale {i+1}" for i in range(nombre_cales)]
+    ax.barh(cales, tonnage_par_cale, color='steelblue')
+    ax.set_xlabel("Tonnage (T)")
+    ax.set_title("Répartition du tonnage par cale")
+    st.pyplot(fig)
 
 st.title("Optimisation des Escales de Navires")
 
@@ -68,3 +77,6 @@ if st.button("Calculer"):
     st.write("Shift recommande :", working_shift)
     st.write("Cout total ajuste apres application du shift (€) :", cout_total_shift)
     st.dataframe(results)
+    
+    st.subheader("Schema du navire et repartition du tonnage")
+    afficher_schema_navire(tonnage_par_cale, nombre_cales)
