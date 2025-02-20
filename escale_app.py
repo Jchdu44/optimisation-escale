@@ -29,7 +29,8 @@ def predire_cadence(historique_data):
 def calcul_duree_escale(tonnage_par_cale, cadence_moyenne):
     duree_par_cale = [tonnage / cadence_moyenne if cadence_moyenne > 0 else 0 for tonnage in tonnage_par_cale]
     duree_totale = sum(duree_par_cale)
-    return duree_par_cale, duree_totale
+    seuil_bulldozer_temps = [(tonnage * (1 - BULLDOZER_SEUIL)) / cadence_moyenne if cadence_moyenne > 0 else 0 for tonnage in tonnage_par_cale]
+    return duree_par_cale, duree_totale, seuil_bulldozer_temps
 
 def optimiser_working_shifts(duree_totale):
     plan_shifts = []
@@ -55,45 +56,16 @@ def optimiser_working_shifts(duree_totale):
     
     return plan_shifts, total_shift_time
 
-def allocation_dockers_par_shift(type_cargaisons, plan_shifts):
-    allocation_par_shift = []
-    for shift in plan_shifts:
-        allocation_shift = {"CM": 0, "HP": 0, "Chauffeurs": 0, "HC": 0}
-        for type_cargaison in type_cargaisons:
-            equipe = equipes_dockers.get(type_cargaison, equipes_dockers["Autres"])
-            for key in allocation_shift:
-                allocation_shift[key] += equipe[key]
-        allocation_par_shift.append((shift, allocation_shift))
-    return allocation_par_shift
-
-def afficher_schema_navire(tonnage_par_cale, duree_par_cale):
+def afficher_schema_navire(tonnage_par_cale, duree_par_cale, seuil_bulldozer_temps):
     fig, ax = plt.subplots(figsize=(12, 3))
     cales = [f"Cale {i+1}" for i in range(len(tonnage_par_cale))]
     colors = ['green' if tonnage > max(tonnage_par_cale) * BULLDOZER_SEUIL else 'red' for tonnage in tonnage_par_cale]
     ax.barh(cales, tonnage_par_cale, color=colors)
-    for i, duree in enumerate(duree_par_cale):
-        ax.text(tonnage_par_cale[i] / 2, i, f"{duree:.2f} h", va='center', ha='center', color='white')
+    for i, (duree, seuil_temps) in enumerate(zip(duree_par_cale, seuil_bulldozer_temps)):
+        ax.text(tonnage_par_cale[i] / 2, i, f"{duree:.2f} h\nBulldozer: {seuil_temps:.2f} h", va='center', ha='center', color='white')
     ax.set_xlabel("Tonnage (T)")
     ax.set_title("Tonnage par cale et durée estimée")
     st.pyplot(fig)
-
-def simulation_dechargement(tonnage_par_cale, cadence_moyenne):
-    st.subheader("Simulation dynamique du déchargement")
-    tonnage_restant = tonnage_par_cale[:]
-    progress_bars = [st.progress(0) for _ in range(len(tonnage_par_cale))]
-    temps = 0
-    
-    while sum(tonnage_restant) > 0:
-        time.sleep(1)
-        temps += 1
-        for i in range(len(tonnage_par_cale)):
-            if tonnage_restant[i] > 0:
-                tonnage_restant[i] -= cadence_moyenne / 60
-                tonnage_restant[i] = max(0, tonnage_restant[i])
-                progress = int(((tonnage_par_cale[i] - tonnage_restant[i]) / tonnage_par_cale[i]) * 100)
-                progress_bars[i].progress(progress)
-        st.write(f"Temps écoulé : {temps} min")
-    st.success("Déchargement terminé !")
 
 st.title("Optimisation des Escales de Navires")
 
@@ -109,9 +81,8 @@ for i in range(nombre_cales):
     type_cargaisons.append(st.selectbox(f"Type de cargaison pour la cale {i+1}", list(equipes_dockers.keys()), key=f"cargaison_{i}"))
 
 if st.button("Calculer"):
-    duree_par_cale, duree_totale = calcul_duree_escale(tonnage_par_cale, cadence_moyenne)
+    duree_par_cale, duree_totale, seuil_bulldozer_temps = calcul_duree_escale(tonnage_par_cale, cadence_moyenne)
     plan_shifts, total_shift_time = optimiser_working_shifts(duree_totale)
-    allocation_par_shift = allocation_dockers_par_shift(type_cargaisons, plan_shifts)
     
     st.subheader("Résultats")
     st.write(f"Nom du navire : {nom_navire}")
@@ -119,13 +90,5 @@ if st.button("Calculer"):
     st.write(f"Shifts recommandés : {', '.join(plan_shifts)}")
     st.write(f"Temps total de shift utilisé : {total_shift_time:.2f} h")
     
-    st.subheader("Détail des équipes de Dockers par Working Shift")
-    allocation_df = pd.DataFrame([{**shift[1], "Shift": shift[0]} for shift in allocation_par_shift])
-    allocation_df = allocation_df.set_index("Shift")
-    st.dataframe(allocation_df)
-    
     st.subheader("Schéma du navire et répartition du tonnage")
-    afficher_schema_navire(tonnage_par_cale, duree_par_cale)
-    
-    if st.button("Démarrer la simulation du déchargement"):
-        simulation_dechargement(tonnage_par_cale, cadence_moyenne)
+    afficher_schema_navire(tonnage_par_cale, duree_par_cale, seuil_bulldozer_temps)
