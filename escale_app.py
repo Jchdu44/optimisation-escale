@@ -23,51 +23,28 @@ shifts = {
 
 BULLDOZER_SEUIL = 0.2  # Seuil de 20% pour introduire un bulldozer
 
-def predire_cadence(historique_data):
-    return np.mean(historique_data) if len(historique_data) > 0 else 100  # Valeur par défaut
-
 def calcul_duree_escale(tonnage_par_cale, cadence_moyenne):
     duree_par_cale = [tonnage / cadence_moyenne if cadence_moyenne > 0 else 0 for tonnage in tonnage_par_cale]
     duree_totale = sum(duree_par_cale)
     seuil_bulldozer_temps = [(tonnage * (1 - BULLDOZER_SEUIL)) / cadence_moyenne if cadence_moyenne > 0 else 0 for tonnage in tonnage_par_cale]
     return duree_par_cale, duree_totale, seuil_bulldozer_temps
 
-def optimiser_working_shifts(duree_totale):
-    plan_shifts = []
-    total_shift_time = 0
-    
-    while duree_totale > 0:
-        if duree_totale > 6.5:
-            plan_shifts.append("S1 + S2")
-            duree_totale -= 13.0
-            total_shift_time += 13.0
-        elif duree_totale > 3.5:
-            plan_shifts.append("S1")
-            duree_totale -= 6.5
-            total_shift_time += 6.5
-        elif duree_totale > 3.0:
-            plan_shifts.append("VS")
-            duree_totale -= 3.0
-            total_shift_time += 3.0
-        else:
-            plan_shifts.append("V1")
-            duree_totale -= 3.5
-            total_shift_time += 3.5
-    
-    return plan_shifts, total_shift_time
-
 def afficher_schema_navire(tonnage_par_cale, duree_par_cale, seuil_bulldozer_temps):
-    fig, ax = plt.subplots(figsize=(12, 3))
+    fig, ax = plt.subplots(figsize=(12, 5))
     cales = [f"Cale {i+1}" for i in range(len(tonnage_par_cale))]
-    colors = [
-        'green' if tonnage > max(tonnage_par_cale) * BULLDOZER_SEUIL else 'red' if tonnage > max(tonnage_par_cale) * 0.1 else 'orange' 
-        for tonnage in tonnage_par_cale
-    ]
-    ax.barh(cales, tonnage_par_cale, color=colors)
-    for i, (duree, seuil_temps) in enumerate(zip(duree_par_cale, seuil_bulldozer_temps)):
-        ax.text(tonnage_par_cale[i] / 2, i, f"{duree:.2f} h\nBulldozer: {seuil_temps:.2f} h", va='center', ha='center', color='white')
-    ax.set_xlabel("Tonnage (T)")
-    ax.set_title("Tonnage par cale et durée estimée")
+    
+    bar_width = 0.4
+    y_positions = np.arange(len(cales))
+    
+    ax.barh(y_positions, duree_par_cale, bar_width, label="Temps de déchargement", color='blue')
+    ax.barh(y_positions + bar_width, seuil_bulldozer_temps, bar_width, label="Temps avant bulldozer", color='orange')
+    
+    ax.set_yticks(y_positions + bar_width / 2)
+    ax.set_yticklabels(cales)
+    ax.set_xlabel("Temps (h)")
+    ax.set_title("Durée de déchargement et seuil d'embarquement du bulldozer par cale")
+    ax.legend()
+    
     st.pyplot(fig)
 
 st.title("Optimisation des Escales de Navires")
@@ -85,13 +62,10 @@ for i in range(nombre_cales):
 
 if st.button("Calculer"):
     duree_par_cale, duree_totale, seuil_bulldozer_temps = calcul_duree_escale(tonnage_par_cale, cadence_moyenne)
-    plan_shifts, total_shift_time = optimiser_working_shifts(duree_totale)
     
     st.subheader("Résultats")
     st.write(f"Nom du navire : {nom_navire}")
     st.write(f"Durée totale estimée de l'escale (h) : {duree_totale:.2f}")
-    st.write(f"Shifts recommandés : {', '.join(plan_shifts)}")
-    st.write(f"Temps total de shift utilisé : {total_shift_time:.2f} h")
     
     st.subheader("Schéma du navire et répartition du tonnage")
     afficher_schema_navire(tonnage_par_cale, duree_par_cale, seuil_bulldozer_temps)
