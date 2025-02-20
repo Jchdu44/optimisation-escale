@@ -6,7 +6,7 @@ import numpy as np
 import time
 
 def calcul_duree_escale(tonnage_par_cale, cadence_dechargement, nombre_cales):
-    duree_par_cale = [tonnage_par_cale[i] / cadence_dechargement[i] if cadence_dechargement[i] > 0 else 0 for i in range(nombre_cales)]
+    duree_par_cale = [tonnage_par_cale[i] / cadence_dechargement if cadence_dechargement > 0 else 0 for i in range(nombre_cales)]
     duree_totale = sum(duree_par_cale) if duree_par_cale else 0
     return duree_par_cale, duree_totale
 
@@ -36,9 +36,8 @@ def optimiser_working_shifts(duree_totale):
     
     return plan_shifts, total_shift_time
 
-def afficher_schema_navire(tonnage_par_cale, durees, nombre_cales, type_cargaison):
+def afficher_schema_navire(tonnage_par_cale, durees, nombre_cales):
     fig, ax = plt.subplots(figsize=(12, 3))
-    
     cale_positions = np.linspace(0, 1, nombre_cales + 2)[1:-1]  # Positions des cales
     bar_width = 1.0 / (nombre_cales + 2)  # Largeur des cales
     
@@ -62,7 +61,6 @@ def simulation_dechargement(tonnage_par_cale, cadence_dechargement, nombre_cales
     st.subheader("Simulation du Déchargement en Temps Réel")
     progress_bars = [st.progress(0) for _ in range(nombre_cales)]
     tonnage_restant = tonnage_par_cale[:]
-    temps_total = max(tonnage_restant[i] / cadence_dechargement for i in range(nombre_cales) if cadence_dechargement > 0)
     temps_ecoule = 0
     
     while sum(tonnage_restant) > 0:
@@ -70,9 +68,10 @@ def simulation_dechargement(tonnage_par_cale, cadence_dechargement, nombre_cales
         temps_ecoule += 1
         for i in range(nombre_cales):
             if tonnage_restant[i] > 0:
-                tonnage_restant[i] -= cadence_dechargement * (1 / 60)  # Déchargement par minute
+                tonnage_restant[i] -= cadence_dechargement / 60  # Déchargement par minute
                 tonnage_restant[i] = max(tonnage_restant[i], 0)
-                progress_bars[i].progress(int(((tonnage_par_cale[i] - tonnage_restant[i]) / tonnage_par_cale[i]) * 100))
+                progress = int(((tonnage_par_cale[i] - tonnage_restant[i]) / tonnage_par_cale[i]) * 100)
+                progress_bars[i].progress(progress)
         
         st.write(f"Temps écoulé : {temps_ecoule} minutes")
     
@@ -84,13 +83,12 @@ nom_navire = st.text_input("Nom du navire")
 nombre_cales = st.number_input("Nombre de cales", min_value=1, step=1)
 cadence_moyenne = st.number_input("Cadence moyenne de dechargement (tonnes/h)", min_value=1.0, step=10.0)
 
-tonnage_par_cale, type_cargaison = [], []
+tonnage_par_cale = []
 for i in range(nombre_cales):
     tonnage_par_cale.append(st.number_input(f"Tonnage de la cale {i+1} (tonnes)", min_value=0.0, step=100.0))
-    type_cargaison.append(st.text_input(f"Type de cargaison pour la cale {i+1}"))
 
 if st.button("Calculer"):
-    durees, duree_totale = calcul_duree_escale(tonnage_par_cale, [cadence_moyenne]*nombre_cales, nombre_cales)
+    durees, duree_totale = calcul_duree_escale(tonnage_par_cale, cadence_moyenne, nombre_cales)
     plan_shifts, total_shift_time = optimiser_working_shifts(duree_totale)
     
     st.subheader("Resultats")
@@ -100,7 +98,7 @@ if st.button("Calculer"):
     st.write(f"Temps total de shift utilise : {total_shift_time:.2f} h")
     
     st.subheader("Schema du navire et repartition du tonnage")
-    afficher_schema_navire(tonnage_par_cale, durees, nombre_cales, type_cargaison)
+    afficher_schema_navire(tonnage_par_cale, durees, nombre_cales)
     
     if st.button("Démarrer la simulation du déchargement"):
         simulation_dechargement(tonnage_par_cale, cadence_moyenne, nombre_cales)
