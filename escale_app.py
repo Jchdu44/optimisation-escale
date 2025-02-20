@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import time
 
 def calcul_duree_escale(tonnage_par_cale, cadence_dechargement, nombre_cales):
     duree_par_cale = [tonnage_par_cale[i] / cadence_dechargement[i] if cadence_dechargement[i] > 0 else 0 for i in range(nombre_cales)]
@@ -57,6 +58,26 @@ def afficher_schema_navire(tonnage_par_cale, durees, nombre_cales, type_cargaiso
     
     st.pyplot(fig)
 
+def simulation_dechargement(tonnage_par_cale, cadence_dechargement, nombre_cales):
+    st.subheader("Simulation du Déchargement en Temps Réel")
+    progress_bars = [st.progress(0) for _ in range(nombre_cales)]
+    tonnage_restant = tonnage_par_cale[:]
+    temps_total = max(tonnage_restant[i] / cadence_dechargement for i in range(nombre_cales) if cadence_dechargement > 0)
+    temps_ecoule = 0
+    
+    while sum(tonnage_restant) > 0:
+        time.sleep(1)
+        temps_ecoule += 1
+        for i in range(nombre_cales):
+            if tonnage_restant[i] > 0:
+                tonnage_restant[i] -= cadence_dechargement * (1 / 60)  # Déchargement par minute
+                tonnage_restant[i] = max(tonnage_restant[i], 0)
+                progress_bars[i].progress(int(((tonnage_par_cale[i] - tonnage_restant[i]) / tonnage_par_cale[i]) * 100))
+        
+        st.write(f"Temps écoulé : {temps_ecoule} minutes")
+    
+    st.success("Déchargement terminé !")
+
 st.title("Optimisation des Escales de Navires")
 
 nom_navire = st.text_input("Nom du navire")
@@ -80,3 +101,6 @@ if st.button("Calculer"):
     
     st.subheader("Schema du navire et repartition du tonnage")
     afficher_schema_navire(tonnage_par_cale, durees, nombre_cales, type_cargaison)
+    
+    if st.button("Démarrer la simulation du déchargement"):
+        simulation_dechargement(tonnage_par_cale, cadence_moyenne, nombre_cales)
