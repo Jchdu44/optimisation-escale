@@ -20,8 +20,8 @@ shifts = {
     "S2 (13h00-20h00)": 6.5
 }
 
-def calcul_duree_escale(tonnage_par_cale, cadence_par_cale):
-    duree_par_cale = [tonnage_par_cale[i] / cadence_par_cale[i] if cadence_par_cale[i] > 0 else 0 for i in range(len(tonnage_par_cale))]
+def calcul_duree_escale(tonnage_par_cale, cadence_moyenne):
+    duree_par_cale = [tonnage / cadence_moyenne if cadence_moyenne > 0 else 0 for tonnage in tonnage_par_cale]
     duree_totale = sum(duree_par_cale)
     return duree_par_cale, duree_totale
 
@@ -65,18 +65,17 @@ st.title("Optimisation des Escales de Navires")
 
 nom_navire = st.text_input("Nom du navire")
 nombre_cales = st.number_input("Nombre de cales", min_value=1, step=1)
+cadence_moyenne = st.number_input("Cadence moyenne de déchargement (tonnes/h)", min_value=1.0, step=10.0)
 
 tonnage_par_cale = []
-cadence_par_cale = []
 type_cargaisons = []
 
 for i in range(nombre_cales):
     tonnage_par_cale.append(st.number_input(f"Tonnage de la cale {i+1} (tonnes)", min_value=0.0, step=100.0))
-    cadence_par_cale.append(st.number_input(f"Cadence de déchargement de la cale {i+1} (tonnes/h)", min_value=1.0, step=10.0))
     type_cargaisons.append(st.selectbox(f"Type de cargaison pour la cale {i+1}", list(equipes_dockers.keys()), key=f"cargaison_{i}"))
 
 if st.button("Calculer"):
-    duree_par_cale, duree_totale = calcul_duree_escale(tonnage_par_cale, cadence_par_cale)
+    duree_par_cale, duree_totale = calcul_duree_escale(tonnage_par_cale, cadence_moyenne)
     plan_shifts, total_shift_time = optimiser_working_shifts(duree_totale)
     allocation_totale = allocation_dockers(type_cargaisons, plan_shifts)
     
