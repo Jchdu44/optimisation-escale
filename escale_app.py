@@ -59,7 +59,10 @@ def optimiser_working_shifts(duree_totale):
 def afficher_schema_navire(tonnage_par_cale, duree_par_cale, seuil_bulldozer_temps):
     fig, ax = plt.subplots(figsize=(12, 3))
     cales = [f"Cale {i+1}" for i in range(len(tonnage_par_cale))]
-    colors = ['green' if tonnage > max(tonnage_par_cale) * BULLDOZER_SEUIL else 'red' for tonnage in tonnage_par_cale]
+    colors = [
+        'green' if tonnage > max(tonnage_par_cale) * BULLDOZER_SEUIL else 'red' if tonnage > max(tonnage_par_cale) * 0.1 else 'orange' 
+        for tonnage in tonnage_par_cale
+    ]
     ax.barh(cales, tonnage_par_cale, color=colors)
     for i, (duree, seuil_temps) in enumerate(zip(duree_par_cale, seuil_bulldozer_temps)):
         ax.text(tonnage_par_cale[i] / 2, i, f"{duree:.2f} h\nBulldozer: {seuil_temps:.2f} h", va='center', ha='center', color='white')
