@@ -45,18 +45,23 @@ def optimiser_working_shifts(duree_totale):
     
     return plan_shifts, total_shift_time
 
-def allocation_dockers(type_cargaisons, plan_shifts):
-    allocation_totale = {"CM": 0, "HP": 0, "Chauffeurs": 0, "HC": 0}
-    for type_cargaison in type_cargaisons:
-        equipe = equipes_dockers.get(type_cargaison, equipes_dockers["Autres"])
-        for key in allocation_totale:
-            allocation_totale[key] += equipe[key] * len(plan_shifts)
-    return allocation_totale
+def allocation_dockers_par_shift(type_cargaisons, plan_shifts):
+    allocation_par_shift = []
+    for shift in plan_shifts:
+        allocation_shift = {"CM": 0, "HP": 0, "Chauffeurs": 0, "HC": 0}
+        for type_cargaison in type_cargaisons:
+            equipe = equipes_dockers.get(type_cargaison, equipes_dockers["Autres"])
+            for key in allocation_shift:
+                allocation_shift[key] += equipe[key]
+        allocation_par_shift.append((shift, allocation_shift))
+    return allocation_par_shift
 
 def afficher_schema_navire(tonnage_par_cale, duree_par_cale):
     fig, ax = plt.subplots(figsize=(12, 3))
     cales = [f"Cale {i+1}" for i in range(len(tonnage_par_cale))]
     ax.barh(cales, tonnage_par_cale, color='steelblue')
+    for i, duree in enumerate(duree_par_cale):
+        ax.text(tonnage_par_cale[i] / 2, i, f"{duree:.2f} h", va='center', ha='center', color='white')
     ax.set_xlabel("Tonnage (T)")
     ax.set_title("Tonnage par cale et durée estimée")
     st.pyplot(fig)
@@ -77,7 +82,7 @@ for i in range(nombre_cales):
 if st.button("Calculer"):
     duree_par_cale, duree_totale = calcul_duree_escale(tonnage_par_cale, cadence_moyenne)
     plan_shifts, total_shift_time = optimiser_working_shifts(duree_totale)
-    allocation_totale = allocation_dockers(type_cargaisons, plan_shifts)
+    allocation_par_shift = allocation_dockers_par_shift(type_cargaisons, plan_shifts)
     
     st.subheader("Résultats")
     st.write(f"Nom du navire : {nom_navire}")
@@ -85,9 +90,10 @@ if st.button("Calculer"):
     st.write(f"Shifts recommandés : {', '.join(plan_shifts)}")
     st.write(f"Temps total de shift utilisé : {total_shift_time:.2f} h")
     
-    st.subheader("Allocation des Dockers par Working Shift")
-    for role, nombre in allocation_totale.items():
-        st.write(f"{role} : {nombre}")
+    st.subheader("Détail des équipes de Dockers par Working Shift")
+    allocation_df = pd.DataFrame([{**shift[1], "Shift": shift[0]} for shift in allocation_par_shift])
+    allocation_df = allocation_df.set_index("Shift")
+    st.dataframe(allocation_df)
     
     st.subheader("Schéma du navire et répartition du tonnage")
     afficher_schema_navire(tonnage_par_cale, duree_par_cale)
