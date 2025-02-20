@@ -17,8 +17,14 @@ shifts = {
     "V1 (08h00-12h00)": 3.5,
     "V2 (14h00-18h00)": 3.5,
     "S1 (06h00-13h00)": 6.5,
-    "S2 (13h00-20h00)": 6.5
+    "S2 (13h00-20h00)": 6.5,
+    "VS (20h00-23h00)": 3.0  # Ajout du shift VS
 }
+
+BULLDOZER_SEUIL = 0.2  # Seuil de 20% pour introduire un bulldozer
+
+def predire_cadence(historique_data):
+    return np.mean(historique_data) if len(historique_data) > 0 else 100  # Valeur par défaut
 
 def calcul_duree_escale(tonnage_par_cale, cadence_moyenne):
     duree_par_cale = [tonnage / cadence_moyenne if cadence_moyenne > 0 else 0 for tonnage in tonnage_par_cale]
@@ -38,6 +44,10 @@ def optimiser_working_shifts(duree_totale):
             plan_shifts.append("S1")
             duree_totale -= 6.5
             total_shift_time += 6.5
+        elif duree_totale > 3.0:
+            plan_shifts.append("VS")
+            duree_totale -= 3.0
+            total_shift_time += 3.0
         else:
             plan_shifts.append("V1")
             duree_totale -= 3.5
@@ -59,12 +69,31 @@ def allocation_dockers_par_shift(type_cargaisons, plan_shifts):
 def afficher_schema_navire(tonnage_par_cale, duree_par_cale):
     fig, ax = plt.subplots(figsize=(12, 3))
     cales = [f"Cale {i+1}" for i in range(len(tonnage_par_cale))]
-    ax.barh(cales, tonnage_par_cale, color='steelblue')
+    colors = ['green' if tonnage > max(tonnage_par_cale) * BULLDOZER_SEUIL else 'red' for tonnage in tonnage_par_cale]
+    ax.barh(cales, tonnage_par_cale, color=colors)
     for i, duree in enumerate(duree_par_cale):
         ax.text(tonnage_par_cale[i] / 2, i, f"{duree:.2f} h", va='center', ha='center', color='white')
     ax.set_xlabel("Tonnage (T)")
     ax.set_title("Tonnage par cale et durée estimée")
     st.pyplot(fig)
+
+def simulation_dechargement(tonnage_par_cale, cadence_moyenne):
+    st.subheader("Simulation dynamique du déchargement")
+    tonnage_restant = tonnage_par_cale[:]
+    progress_bars = [st.progress(0) for _ in range(len(tonnage_par_cale))]
+    temps = 0
+    
+    while sum(tonnage_restant) > 0:
+        time.sleep(1)
+        temps += 1
+        for i in range(len(tonnage_par_cale)):
+            if tonnage_restant[i] > 0:
+                tonnage_restant[i] -= cadence_moyenne / 60
+                tonnage_restant[i] = max(0, tonnage_restant[i])
+                progress = int(((tonnage_par_cale[i] - tonnage_restant[i]) / tonnage_par_cale[i]) * 100)
+                progress_bars[i].progress(progress)
+        st.write(f"Temps écoulé : {temps} min")
+    st.success("Déchargement terminé !")
 
 st.title("Optimisation des Escales de Navires")
 
@@ -97,3 +126,6 @@ if st.button("Calculer"):
     
     st.subheader("Schéma du navire et répartition du tonnage")
     afficher_schema_navire(tonnage_par_cale, duree_par_cale)
+    
+    if st.button("Démarrer la simulation du déchargement"):
+        simulation_dechargement(tonnage_par_cale, cadence_moyenne)
