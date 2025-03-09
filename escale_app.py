@@ -9,30 +9,30 @@ from io import BytesIO
 from fpdf import FPDF
 from datetime import datetime
 
-# Définition des équipes types et cadence moyenne associée en fonction de la cargaison
+# Définition des cadences par type de marchandise
 equipes_dockers = {
-    "Alumine": {"Cadence": 357, "Densité": 1.3},
-    "Bauxite": {"Cadence": 384, "Densité": 1.3},
-    "Carbonate de soude": {"Cadence": 303, "Densité": 1.6},
-    "Charbon": {"Cadence": 330, "Densité": 0.7},
-    "Chrome": {"Cadence": 357, "Densité": 1.7},
-    "Clinker": {"Cadence": 257, "Densité": 1.7},
-    "Petcoke": {"Cadence": 351, "Densité": 0.7},
-    "DAP": {"Cadence": 380, "Densité": 1.04},
-    "Drêche de maïs": {"Cadence": 199, "Densité": None},
-    "Graines de colza": {"Cadence": 480, "Densité": 0.68},
-    "Pâte à papier (portique)": {"Cadence": 531, "Densité": None},
-    "Pâte à papier (grue de terre)": {"Cadence": 366, "Densité": None},
-    "Sulfate d'ammonium": {"Cadence": 292, "Densité": 0.95},
-    "Tourteaux de colza (export)": {"Cadence": 443, "Densité": 0.7},
-    "Tourteaux de soja": {"Cadence": 394, "Densité": 0.55},
-    "Tourteaux de tournesol": {"Cadence": 357, "Densité": 0.5},
-    "Tourteaux de soja trace (sans OGM)": {"Cadence": 322, "Densité": 0.55},
-    "Urée": {"Cadence": 362, "Densité": 0.77},
-    "Pierre ponce": {"Cadence": 381, "Densité": 0.7},
-    "Phosphate": {"Cadence": 368, "Densité": 1.6},
-    "NPK": {"Cadence": 324, "Densité": None},
-    "Carbonate de fer": {"Cadence": 371, "Densité": 2.3}
+    "Alumine": 357,
+    "Bauxite": 384,
+    "Carbonate de soude": 303,
+    "Charbon": 330,
+    "Chrome": 357,
+    "Clinker": 257,
+    "Petcoke": 351,
+    "DAP": 380,
+    "Drêche de maïs": 199,
+    "Graines de colza": 480,
+    "Pâte à papier (portique)": 531,
+    "Pâte à papier (grue de terre)": 366,
+    "Sulfate d'ammonium": 292,
+    "Tourteaux de colza (export)": 443,
+    "Tourteaux de soja": 394,
+    "Tourteaux de tournesol": 357,
+    "Tourteaux de soja trace (sans OGM)": 322,
+    "Urée": 362,
+    "Pierre ponce": 381,
+    "Phosphate": 368,
+    "NPK": 324,
+    "Carbonate de fer": 371
 }
 
 shifts = [
@@ -98,7 +98,9 @@ for i in range(nombre_cales):
     
     type_cargaison = st.selectbox(f"Type de cargaison pour la cale {i+1}", definition_cargaisons, key=f"cargaison_{i}")
     type_cargaisons.append(type_cargaison)
-    cadence = st.number_input(f"Cadence pour la cale {i+1} (T/h)", min_value=50.0, step=10.0, value=equipes_dockers[type_cargaison]["Cadence"])
+    
+    default_cadence = equipes_dockers.get(type_cargaison, 50.0)
+    cadence = st.number_input(f"Cadence pour la cale {i+1} (T/h)", min_value=50.0, step=10.0, value=float(default_cadence))
     cadence_par_cale.append(cadence)
 
 if st.button("Calculer"):
