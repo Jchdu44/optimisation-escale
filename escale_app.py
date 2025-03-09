@@ -40,14 +40,36 @@ shifts = [
     ("S2 (13h00-20h00)", 6.5),
     ("V1 (08h00-12h00)", 3.5),
     ("V2 (14h00-18h00)", 3.5),
-    ("VS (20h00-23h00)", 3.0)  # Ajout du shift VS
+    ("VS (20h00-23h00)", 3.0)
 ]
 
-BULLDOZER_SEUIL = 0.2  # Seuil de 20% pour introduire un bulldozer
+BULLDOZER_SEUIL = 0.2
+
+def optimiser_working_shifts(duree_totale):
+    shifts_utilises = []
+    total_shift_time = 0
+    utiliser_matin = True
+
+    while duree_totale > 0:
+        if duree_totale >= 6.5:
+            shifts_utilises.append("S1 (06h00-13h00)" if utiliser_matin else "S2 (13h00-20h00)")
+            duree_totale -= 6.5
+            total_shift_time += 6.5
+            utiliser_matin = not utiliser_matin
+        elif duree_totale >= 3.5:
+            shifts_utilises.append("V1 (08h00-12h00)" if utiliser_matin else "V2 (14h00-18h00)")
+            duree_totale -= 3.5
+            total_shift_time += 3.5
+            utiliser_matin = not utiliser_matin
+        else:
+            shifts_utilises.append("VS (20h00-23h00)")
+            duree_totale -= 3.0
+            total_shift_time += 3.0
+
+    return shifts_utilises, total_shift_time
 
 st.title("Optimisation des Escales de Navires")
 
-# Affichage de la version du code
 st.write(f"Version du code : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
 nom_navire = st.text_input("Nom du navire")
@@ -77,5 +99,4 @@ if st.button("Calculer"):
     st.write(f"Shifts recommandés : {', '.join(shifts_utilises)}")
     st.write(f"Temps total de shift utilisé : {total_shift_time:.2f} h")
 
-# Ajout d'une mise à jour automatique pour vérifier si le code est bien mis à jour
 st.write("Si cette heure ne change pas après une mise à jour, Streamlit n'exécute pas la dernière version du code.")
