@@ -45,6 +45,27 @@ shifts = [
 
 BULLDOZER_SEUIL = 0.23  # Seuil pour le bulldozer à 23% du tonnage
 
+def proposer_shifts(duree_totale):
+    shifts_utilises = []
+    heure_actuelle = 6  # Début du premier shift à 06h00
+
+    while duree_totale > 0:
+        for shift, duree_shift in shifts:
+            if duree_totale >= duree_shift and (
+                (shift.startswith("S1") and heure_actuelle == 6) or
+                (shift.startswith("S2") and heure_actuelle == 13) or
+                (shift.startswith("V1") and heure_actuelle == 8) or
+                (shift.startswith("V2") and heure_actuelle == 14) or
+                (shift.startswith("VS") and heure_actuelle == 20)
+            ):
+                shifts_utilises.append(shift)
+                duree_totale -= duree_shift
+                heure_actuelle += duree_shift
+                if heure_actuelle >= 24:
+                    heure_actuelle = 6  # Reprise du cycle à 06h00 le lendemain
+                break
+    return shifts_utilises
+
 st.title("Optimisation des Escales de Navires")
 
 st.write(f"Version du code : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
@@ -96,5 +117,8 @@ if st.button("Calculer"):
     
     duree_totale = sum(duree_dechargement_par_cale)
     st.write(f"Durée totale estimée de l'escale (h) : {duree_totale:.2f}")
+    
+    shifts_recommandes = proposer_shifts(duree_totale)
+    st.write(f"Shifts recommandés : {', '.join(shifts_recommandes)}")
 
 st.write("Si cette heure ne change pas après une mise à jour, Streamlit n'exécute pas la dernière version du code.")
