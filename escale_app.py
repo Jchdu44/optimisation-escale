@@ -45,7 +45,7 @@ shifts = [
 
 BULLDOZER_SEUIL = 0.23  # Seuil pour le bulldozer à 23% du tonnage
 
-def proposer_shifts(duree_totale):
+def proposer_shifts(duree_totale, heure_actuelle=6):
     shifts_utilises = []
     heure_actuelle = 6  # Début du premier shift à 06h00
 
@@ -118,8 +118,11 @@ if st.button("Calculer"):
     duree_totale = sum(duree_dechargement_par_cale)
     st.write(f"Durée totale estimée de l'escale (h) : {duree_totale:.2f}")
     
-    shifts_recommandes = proposer_shifts(duree_totale)
+    shifts_recommandes = proposer_shifts(duree_totale, heure_actuelle=6)
     st.write(f"Shifts recommandés : {', '.join(shifts_recommandes)}")
-st.write(f"Nombre total de working shifts nécessaires : {len(shifts_recommandes)}")
+if 'shifts_recommandes' in locals():
+    st.write(f"Nombre total de working shifts nécessaires : {len(shifts_recommandes)}")
+else:
+    st.write("Erreur : les shifts recommandés n'ont pas été calculés correctement.")
 
 st.write("Si cette heure ne change pas après une mise à jour, Streamlit n'exécute pas la dernière version du code.")
