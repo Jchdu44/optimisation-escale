@@ -120,5 +120,6 @@ if st.button("Calculer"):
     
     shifts_recommandes = proposer_shifts(duree_totale)
     st.write(f"Shifts recommandés : {', '.join(shifts_recommandes)}")
+st.write(f"Nombre total de working shifts nécessaires : {len(shifts_recommandes)}")
 
 st.write("Si cette heure ne change pas après une mise à jour, Streamlit n'exécute pas la dernière version du code.")
