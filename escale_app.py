@@ -43,41 +43,7 @@ shifts = [
     ("VS (20h00-23h00)", 3.0)
 ]
 
-BULLDOZER_SEUIL = 0.2
-
-def optimiser_working_shifts(duree_totale, heure_debut=6.0):
-    shifts_utilises = []
-    total_shift_time = 0
-    heure_actuelle = heure_debut
-
-    while duree_totale > 0:
-        if heure_actuelle >= 6 and heure_actuelle < 13 and duree_totale >= 6.5:
-            shifts_utilises.append("S1 (06h00-13h00)")
-            duree_totale -= 6.5
-            total_shift_time += 6.5
-            heure_actuelle = 13
-        elif heure_actuelle >= 13 and heure_actuelle < 20 and duree_totale >= 6.5:
-            shifts_utilises.append("S2 (13h00-20h00)")
-            duree_totale -= 6.5
-            total_shift_time += 6.5
-            heure_actuelle = 20
-        elif heure_actuelle >= 8 and heure_actuelle < 12 and duree_totale >= 3.5:
-            shifts_utilises.append("V1 (08h00-12h00)")
-            duree_totale -= 3.5
-            total_shift_time += 3.5
-            heure_actuelle = 12
-        elif heure_actuelle >= 14 and heure_actuelle < 18 and duree_totale >= 3.5:
-            shifts_utilises.append("V2 (14h00-18h00)")
-            duree_totale -= 3.5
-            total_shift_time += 3.5
-            heure_actuelle = 18
-        else:
-            shifts_utilises.append("VS (20h00-23h00)")
-            duree_totale -= 3.0
-            total_shift_time += 3.0
-            heure_actuelle = 23
-
-    return shifts_utilises, total_shift_time
+BULLDOZER_SEUIL = 0.23  # Seuil pour le bulldozer à 23% du tonnage
 
 st.title("Optimisation des Escales de Navires")
 
@@ -104,13 +70,31 @@ for i in range(nombre_cales):
     cadence_par_cale.append(cadence)
 
 if st.button("Calculer"):
-    duree_totale = sum([tonnage / cadence for tonnage, cadence in zip(tonnage_par_cale, cadence_par_cale)])
-    shifts_utilises, total_shift_time = optimiser_working_shifts(duree_totale)
+    duree_dechargement_par_cale = [tonnage / cadence for tonnage, cadence in zip(tonnage_par_cale, cadence_par_cale)]
+    seuil_bulldozer_par_cale = [duree * BULLDOZER_SEUIL for duree in duree_dechargement_par_cale]
     
     st.subheader("Résultats")
     st.write(f"Nom du navire : {nom_navire}")
+    st.write("Durée estimée de déchargement par cale et seuil bulldozer")
+    
+    fig, ax = plt.subplots(figsize=(8, 6))
+    cale_labels = [f"Cale {i+1}" for i in range(nombre_cales)]
+    bar_width = 0.4
+    
+    ax.barh(cale_labels, duree_dechargement_par_cale, color='blue', label="Durée de déchargement")
+    ax.barh(cale_labels, seuil_bulldozer_par_cale, color='orange', label="Seuil bulldozer")
+    
+    for i, v in enumerate(duree_dechargement_par_cale):
+        ax.text(v, i, f"{v:.2f} h", va='center', color='white', fontsize=10, weight='bold')
+    for i, v in enumerate(seuil_bulldozer_par_cale):
+        ax.text(v, i, f"{v:.2f} h", va='center', color='black', fontsize=8)
+    
+    ax.set_xlabel("Temps (h)")
+    ax.set_title("Durée de déchargement et seuil bulldozer par cale")
+    ax.legend()
+    st.pyplot(fig)
+    
+    duree_totale = sum(duree_dechargement_par_cale)
     st.write(f"Durée totale estimée de l'escale (h) : {duree_totale:.2f}")
-    st.write(f"Shifts recommandés : {', '.join(shifts_utilises)}")
-    st.write(f"Temps total de shift utilisé : {total_shift_time:.2f} h")
 
 st.write("Si cette heure ne change pas après une mise à jour, Streamlit n'exécute pas la dernière version du code.")
