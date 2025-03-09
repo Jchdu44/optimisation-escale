@@ -4,102 +4,78 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import time
+import requests
+from io import BytesIO
+from fpdf import FPDF
+from datetime import datetime
 
-# Définition des équipes types en fonction de la cargaison
+# Définition des équipes types et cadence moyenne associée en fonction de la cargaison
 equipes_dockers = {
-    "Tourteaux de soja": {"CM": 1, "HP": 2, "Chauffeurs": 2, "HC": 1},
-    "Céréales": {"CM": 1, "HP": 1, "Chauffeurs": 1, "HC": 1},
-    "Charbon": {"CM": 1, "HP": 3, "Chauffeurs": 2, "HC": 2},
-    "Autres": {"CM": 1, "HP": 1, "Chauffeurs": 1, "HC": 1}
+    "Alumine": {"Cadence": 357, "Densité": 1.3},
+    "Bauxite": {"Cadence": 384, "Densité": 1.3},
+    "Carbonate de soude": {"Cadence": 303, "Densité": 1.6},
+    "Charbon": {"Cadence": 330, "Densité": 0.7},
+    "Chrome": {"Cadence": 357, "Densité": 1.7},
+    "Clinker": {"Cadence": 257, "Densité": 1.7},
+    "Petcoke": {"Cadence": 351, "Densité": 0.7},
+    "DAP": {"Cadence": 380, "Densité": 1.04},
+    "Drêche de maïs": {"Cadence": 199, "Densité": None},
+    "Graines de colza": {"Cadence": 480, "Densité": 0.68},
+    "Pâte à papier (portique)": {"Cadence": 531, "Densité": None},
+    "Pâte à papier (grue de terre)": {"Cadence": 366, "Densité": None},
+    "Sulfate d'ammonium": {"Cadence": 292, "Densité": 0.95},
+    "Tourteaux de colza (export)": {"Cadence": 443, "Densité": 0.7},
+    "Tourteaux de soja": {"Cadence": 394, "Densité": 0.55},
+    "Tourteaux de tournesol": {"Cadence": 357, "Densité": 0.5},
+    "Tourteaux de soja trace (sans OGM)": {"Cadence": 322, "Densité": 0.55},
+    "Urée": {"Cadence": 362, "Densité": 0.77},
+    "Pierre ponce": {"Cadence": 381, "Densité": 0.7},
+    "Phosphate": {"Cadence": 368, "Densité": 1.6},
+    "NPK": {"Cadence": 324, "Densité": None},
+    "Carbonate de fer": {"Cadence": 371, "Densité": 2.3}
 }
 
-shifts = {
-    "V1 (08h00-12h00)": 3.5,
-    "V2 (14h00-18h00)": 3.5,
-    "S1 (06h00-13h00)": 6.5,
-    "S2 (13h00-20h00)": 6.5,
-    "VS (20h00-23h00)": 3.0  # Ajout du shift VS
-}
+shifts = [
+    ("S1 (06h00-13h00)", 6.5),
+    ("S2 (13h00-20h00)", 6.5),
+    ("V1 (08h00-12h00)", 3.5),
+    ("V2 (14h00-18h00)", 3.5),
+    ("VS (20h00-23h00)", 3.0)  # Ajout du shift VS
+]
 
 BULLDOZER_SEUIL = 0.2  # Seuil de 20% pour introduire un bulldozer
 
-def calcul_duree_escale(tonnage_par_cale, cadence_moyenne):
-    if not tonnage_par_cale or cadence_moyenne <= 0:
-        return [], 0, []
-    duree_par_cale = [tonnage / cadence_moyenne for tonnage in tonnage_par_cale]
-    duree_totale = sum(duree_par_cale)
-    seuil_bulldozer_temps = [(tonnage * (1 - BULLDOZER_SEUIL)) / cadence_moyenne for tonnage in tonnage_par_cale]
-    return duree_par_cale, duree_totale, seuil_bulldozer_temps
-
-def optimiser_working_shifts(duree_totale):
-    plan_shifts = []
-    total_shift_time = 0
-    
-    while duree_totale > 0:
-        found_shift = False
-        for shift, duration in sorted(shifts.items(), key=lambda x: -x[1]):
-            if duree_totale >= duration:
-                plan_shifts.append(shift)
-                duree_totale -= duration
-                total_shift_time += duration
-                found_shift = True
-                break
-        if not found_shift:
-            break  # Sécurité pour éviter une boucle infinie
-    
-    return plan_shifts, total_shift_time
-
-def afficher_schema_navire(tonnage_par_cale, duree_par_cale, seuil_bulldozer_temps):
-    fig, ax = plt.subplots(figsize=(12, 5))
-    cales = [f"Cale {i+1}" for i in range(len(tonnage_par_cale))]
-    
-    bar_width = 0.4
-    y_positions = np.arange(len(cales))
-    
-    ax.barh(y_positions, duree_par_cale, bar_width, label="Temps de déchargement", color='blue')
-    ax.barh(y_positions + bar_width, seuil_bulldozer_temps, bar_width, label="Temps avant bulldozer", color='orange')
-    
-    for i, (duree, seuil_temps) in enumerate(zip(duree_par_cale, seuil_bulldozer_temps)):
-        ax.text(duree / 2, i, f"{duree:.2f} h", va='center', ha='center', color='white')
-        ax.text(seuil_temps / 2, i + bar_width, f"{seuil_temps:.2f} h", va='center', ha='center', color='black')
-    
-    ax.set_yticks(y_positions + bar_width / 2)
-    ax.set_yticklabels(cales)
-    ax.set_xlabel("Temps (h)")
-    ax.set_title("Durée de déchargement et seuil d'embarquement du bulldozer par cale")
-    ax.legend()
-    
-    st.pyplot(fig)
-
 st.title("Optimisation des Escales de Navires")
+
+# Affichage de la version du code
+st.write(f"Version du code : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
 nom_navire = st.text_input("Nom du navire")
 nombre_cales = st.number_input("Nombre de cales", min_value=1, step=1)
-cadence_moyenne = st.number_input("Cadence moyenne de déchargement (tonnes/h)", min_value=1.0, step=10.0)
 
 tonnage_par_cale = []
 type_cargaisons = []
+cadence_par_cale = []
+
+definition_cargaisons = list(equipes_dockers.keys())
 
 for i in range(nombre_cales):
     tonnage = st.number_input(f"Tonnage de la cale {i+1} (tonnes)", min_value=0.0, step=100.0)
     tonnage_par_cale.append(tonnage)
-    type_cargaisons.append(st.selectbox(f"Type de cargaison pour la cale {i+1}", list(equipes_dockers.keys()), key=f"cargaison_{i}"))
+    
+    type_cargaison = st.selectbox(f"Type de cargaison pour la cale {i+1}", definition_cargaisons, key=f"cargaison_{i}")
+    type_cargaisons.append(type_cargaison)
+    cadence_par_cale.append(equipes_dockers[type_cargaison]["Cadence"])
 
 if st.button("Calculer"):
-    try:
-        duree_par_cale, duree_totale, seuil_bulldozer_temps = calcul_duree_escale(tonnage_par_cale, cadence_moyenne)
-        if duree_totale == 0:
-            st.warning("Veuillez saisir des valeurs valides pour le tonnage et la cadence de déchargement.")
-        else:
-            plan_shifts, total_shift_time = optimiser_working_shifts(duree_totale)
-            
-            st.subheader("Résultats")
-            st.write(f"Nom du navire : {nom_navire}")
-            st.write(f"Durée totale estimée de l'escale (h) : {duree_totale:.2f}")
-            st.write(f"Shifts recommandés : {', '.join(plan_shifts)}")
-            st.write(f"Temps total de shift utilisé : {total_shift_time:.2f} h")
-            
-            st.subheader("Schéma du navire et répartition du tonnage")
-            afficher_schema_navire(tonnage_par_cale, duree_par_cale, seuil_bulldozer_temps)
-    except Exception as e:
-        st.error(f"Une erreur est survenue : {str(e)}")
+    duree_totale = sum([tonnage / cadence for tonnage, cadence in zip(tonnage_par_cale, cadence_par_cale)])
+    shifts_utilises, total_shift_time = optimiser_working_shifts(duree_totale)
+    
+    st.subheader("Résultats")
+    st.write(f"Nom du navire : {nom_navire}")
+    st.write(f"Durée totale estimée de l'escale (h) : {duree_totale:.2f}")
+    st.write(f"Shifts recommandés : {', '.join(shifts_utilises)}")
+    st.write(f"Temps total de shift utilisé : {total_shift_time:.2f} h")
+
+# Ajout d'une mise à jour automatique pour vérifier si le code est bien mis à jour
+st.write("Si cette heure ne change pas après une mise à jour, Streamlit n'exécute pas la dernière version du code.")
