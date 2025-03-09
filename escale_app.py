@@ -45,26 +45,37 @@ shifts = [
 
 BULLDOZER_SEUIL = 0.2
 
-def optimiser_working_shifts(duree_totale):
+def optimiser_working_shifts(duree_totale, heure_debut=6.0):
     shifts_utilises = []
     total_shift_time = 0
-    utiliser_matin = True
+    heure_actuelle = heure_debut
 
     while duree_totale > 0:
-        if duree_totale >= 6.5:
-            shifts_utilises.append("S1 (06h00-13h00)" if utiliser_matin else "S2 (13h00-20h00)")
+        if heure_actuelle >= 6 and heure_actuelle < 13 and duree_totale >= 6.5:
+            shifts_utilises.append("S1 (06h00-13h00)")
             duree_totale -= 6.5
             total_shift_time += 6.5
-            utiliser_matin = not utiliser_matin
-        elif duree_totale >= 3.5:
-            shifts_utilises.append("V1 (08h00-12h00)" if utiliser_matin else "V2 (14h00-18h00)")
+            heure_actuelle = 13
+        elif heure_actuelle >= 13 and heure_actuelle < 20 and duree_totale >= 6.5:
+            shifts_utilises.append("S2 (13h00-20h00)")
+            duree_totale -= 6.5
+            total_shift_time += 6.5
+            heure_actuelle = 20
+        elif heure_actuelle >= 8 and heure_actuelle < 12 and duree_totale >= 3.5:
+            shifts_utilises.append("V1 (08h00-12h00)")
             duree_totale -= 3.5
             total_shift_time += 3.5
-            utiliser_matin = not utiliser_matin
+            heure_actuelle = 12
+        elif heure_actuelle >= 14 and heure_actuelle < 18 and duree_totale >= 3.5:
+            shifts_utilises.append("V2 (14h00-18h00)")
+            duree_totale -= 3.5
+            total_shift_time += 3.5
+            heure_actuelle = 18
         else:
             shifts_utilises.append("VS (20h00-23h00)")
             duree_totale -= 3.0
             total_shift_time += 3.0
+            heure_actuelle = 23
 
     return shifts_utilises, total_shift_time
 
@@ -87,7 +98,8 @@ for i in range(nombre_cales):
     
     type_cargaison = st.selectbox(f"Type de cargaison pour la cale {i+1}", definition_cargaisons, key=f"cargaison_{i}")
     type_cargaisons.append(type_cargaison)
-    cadence_par_cale.append(equipes_dockers[type_cargaison]["Cadence"])
+    cadence = st.number_input(f"Cadence pour la cale {i+1} (T/h)", min_value=50.0, step=10.0, value=equipes_dockers[type_cargaison]["Cadence"])
+    cadence_par_cale.append(cadence)
 
 if st.button("Calculer"):
     duree_totale = sum([tonnage / cadence for tonnage, cadence in zip(tonnage_par_cale, cadence_par_cale)])
